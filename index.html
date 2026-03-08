@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoseCoin DApp</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 500px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 28px;
+      background: linear-gradient(90deg, #e040fb, #7c4dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .subtitle { color: #aaa; margin-bottom: 30px; font-size: 14px; }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-label { font-size: 12px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .card-value { font-size: 20px; font-weight: bold; color: #e040fb; }
+
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 16px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    input::placeholder { color: #666; }
+    input:focus { border-color: #e040fb; }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, #e040fb, #7c4dff);
+      color: white;
+      margin-bottom: 10px;
+    }
+
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: #ccc;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success { background: rgba(0, 200, 100, 0.15); border: 1px solid rgba(0,200,100,0.3); color: #4caf82; }
+    .status.error { background: rgba(255, 80, 80, 0.15); border: 1px solid rgba(255,80,80,0.3); color: #ff6b6b; }
+    .status.info { background: rgba(100, 160, 255, 0.15); border: 1px solid rgba(100,160,255,0.3); color: #82b4ff; }
+
+    .wallet-address {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+      word-break: break-all;
+    }
+
+    .section-title {
+      font-size: 13px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      margin-top: 24px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌹 RoseCoin DApp</h1>
+    <p class="subtitle">Interact with RSC token on Sepolia Testnet</p>
+
+    <!-- Connect Wallet -->
+    <button class="btn-primary" id="connectBtn" onclick="connectWallet()">
+      🦊 Connect MetaMask
+    </button>
+    <p class="wallet-address" id="walletAddress"></p>
+
+    <hr class="divider" />
+
+    <!-- Token Info -->
+    <p class="section-title">Token Info</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="card">
+        <div class="card-label">Your Balance</div>
+        <div class="card-value" id="balance">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Supply</div>
+        <div class="card-value" id="totalSupply">—</div>
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="loadTokenInfo()" style="margin-top: 4px;">
+      🔄 Refresh Balance
+    </button>
+
+    <hr class="divider" />
+
+    <!-- Transfer -->
+    <p class="section-title">Transfer RSC</p>
+    <input id="recipientInput" type="text" placeholder="Recipient address (0x...)" />
+    <input id="amountInput" type="number" placeholder="Amount (RSC)" min="1" />
+    <button class="btn-primary" id="transferBtn" onclick="transferTokens()">
+      ➤ Send RSC
+    </button>
+
+    <div class="status" id="statusMsg"></div>
+  </div>
+
+  <!-- Ethers.js v6 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+  <script>
+    // ============================================================
+    // CONFIG — Replace with your deployed contract address
+    // ============================================================
+    const CONTRACT_ADDRESS = "0xYOUR_CONTRACT_ADDRESS_HERE";
+
+    const ABI = [
+      "function name() view returns (string)",
+      "function symbol() view returns (string)",
+      "function totalSupply() view returns (uint256)",
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "event Transfer(address indexed from, address indexed to, uint256 value)"
+    ];
+    // ============================================================
+
+    let provider, signer, contract, userAddress;
+
+    function showStatus(msg, type = "info") {
+      const el = document.getElementById("statusMsg");
+      el.textContent = msg;
+      el.className = `status ${type}`;
+      el.style.display = "block";
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        showStatus("MetaMask not found. Please install it first.", "error");
+        return;
+      }
+      try {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        userAddress = await signer.getAddress();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        const short = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        document.getElementById("connectBtn").textContent = `✅ Connected: ${short}`;
+        document.getElementById("walletAddress").textContent = userAddress;
+
+        await loadTokenInfo();
+        showStatus("Wallet connected successfully!", "success");
+      } catch (e) {
+        showStatus("Connection failed: " + e.message, "error");
+      }
+    }
+
+    async function loadTokenInfo() {
+      if (!contract || !userAddress) {
+        showStatus("Please connect your wallet first.", "error");
+        return;
+      }
+      try {
+        const [balance, supply] = await Promise.all([
+          contract.balanceOf(userAddress),
+          contract.totalSupply()
+        ]);
+        document.getElementById("balance").textContent =
+          Number(ethers.formatEther(balance)).toLocaleString() + " RSC";
+        document.getElementById("totalSupply").textContent =
+          Number(ethers.formatEther(supply)).toLocaleString() + " RSC";
+      } catch (e) {
+        showStatus("Failed to load token info: " + e.message, "error");
+      }
+    }
+
+    async function transferTokens() {
+      const recipient = document.getElementById("recipientInput").value.trim();
+      const amount = document.getElementById("amountInput").value.trim();
+
+      if (!contract) { showStatus("Connect wallet first.", "error"); return; }
+      if (!ethers.isAddress(recipient)) { showStatus("Invalid recipient address.", "error"); return; }
+      if (!amount || isNaN(amount) || Number(amount) <= 0) { showStatus("Enter a valid amount.", "error"); return; }
+
+      try {
+        document.getElementById("transferBtn").disabled = true;
+        showStatus("⏳ Sending transaction...", "info");
+
+        const tx = await contract.transfer(recipient, ethers.parseEther(amount));
+        showStatus(`⏳ Transaction sent! Waiting for confirmation...`, "info");
+        await tx.wait();
+
+        showStatus(`✅ Sent ${amount} RSC to ${recipient.slice(0,6)}...${recipient.slice(-4)}`, "success");
+        await loadTokenInfo();
+      } catch (e) {
+        showStatus("Transaction failed: " + (e.reason || e.message), "error");
+      } finally {
+        document.getElementById("transferBtn").disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
